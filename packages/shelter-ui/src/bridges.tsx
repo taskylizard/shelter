@@ -4,10 +4,10 @@ import { React, ReactDOM } from "./react";
 
 export const ReactInSolidBridge: Component<{
   children: any;
-  comp: (props: any) => any;
+  comp: React.ComponentType;
   props?: object;
 }> = (props) => {
-  const root = <div style="display:contents" />;
+  const root = (<div style="display:contents" />) as HTMLDivElement;
 
   props.props = { ...props.props, children: props.children };
 
@@ -21,7 +21,7 @@ export const ReactInSolidBridge: Component<{
 };
 
 export const SolidInReactBridge = (props: any) => {
-  const ref = React.useRef();
+  const ref = React.useRef<HTMLDivElement>();
   const propSignal = React.useRef(createSignal());
 
   propSignal.current[1](() => props.props);
@@ -29,7 +29,7 @@ export const SolidInReactBridge = (props: any) => {
   React.useEffect(() => {
     if (ref.current !== undefined) {
       ref.current.innerHTML = "";
-      ref.current.append(<ReactiveRoot>{props.comp(propSignal.current[0]())}</ReactiveRoot>);
+      ref.current.append((<ReactiveRoot>{props.comp(propSignal.current[0]())}</ReactiveRoot>) as HTMLDivElement);
     }
   }, [props]);
 
