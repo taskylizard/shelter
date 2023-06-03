@@ -1,9 +1,9 @@
-import { isInited, signalOf, solidMutWithSignal, storage, waitInit } from "./storage";
+import { signalOf, solidMutWithSignal, storage, waitInit } from "./storage";
 import { Component } from "solid-js";
 import { createMutable } from "solid-js/store";
 import { log } from "./util";
-import { ModalBody, ModalHeader, ModalRoot, openModal } from "shelter-ui";
 import { devModeReservedId } from "./devmode";
+import { createShelterPluginEdition, pluginStorages, ScopedUnpatches } from "./pluginApi";
 
 // a lot of this is adapted from cumcord, but some of it is new, and hopefully the code should be a lot less messy :)
 
@@ -19,37 +19,14 @@ export type EvaledPlugin = {
   onLoad?(): void;
   onUnload(): void;
   settings?: Component;
+  scopedUnpatches: ScopedUnpatches;
 };
 
 const internalData = storage<StoredPlugin>("plugins-internal");
-const pluginStorages = storage("plugins-data");
 const [internalLoaded, loadedPlugins] = solidMutWithSignal(createMutable({} as Record<string, EvaledPlugin>));
 
 export const installedPlugins = signalOf(internalData);
 export { loadedPlugins };
-
-function createStorage(pluginId: string): [Record<string, any>, () => void] {
-  if (!isInited(pluginStorages))
-    throw new Error("to keep data persistent, plugin storages must not be created until connected to IDB");
-
-  const data = createMutable((pluginStorages[pluginId] ?? {}) as Record<string, any>);
-
-  const flush = () => (pluginStorages[pluginId] = { ...data });
-
-  return [
-    new Proxy(data, {
-      set(t, p, v, r) {
-        queueMicrotask(flush);
-        return Reflect.set(t, p, v, r);
-      },
-      deleteProperty(t, p) {
-        queueMicrotask(flush);
-        return Reflect.deleteProperty(t, p);
-      },
-    }),
-    flush,
-  ];
-}
 
 export function startPlugin(pluginId: string) {
   const data = internalData[pluginId];
@@ -57,23 +34,7 @@ export function startPlugin(pluginId: string) {
 
   if (internalLoaded[pluginId]) throw new Error("attempted to load an already loaded plugin");
 
-  const [store, flushStore] = createStorage(pluginId);
-
-  const shelterPluginEdition = {
-    ...window["shelter"],
-    plugin: {
-      store,
-      flushStore,
-      manifest: data.manifest,
-      showSettings: () =>
-        openModal((mprops) => (
-          <ModalRoot>
-            <ModalHeader close={mprops.close}>Settings - {data.manifest.name}</ModalHeader>
-            <ModalBody>{getSettings(pluginId)({})}</ModalBody>
-          </ModalRoot>
-        )),
-    },
-  };
+  const [shelterPluginEdition, scopedUnpatches] = createShelterPluginEdition(pluginId, data);
 
   const pluginString = `shelter=>{return ${data.js}}${atob("Ci8v")}# sourceURL=s://!SHELTER/${pluginId}`;
 
@@ -81,7 +42,7 @@ export function startPlugin(pluginId: string) {
     // noinspection CommaExpressionJS
     const rawPlugin: EvaledPlugin = (0, eval)(pluginString)(shelterPluginEdition);
     // clone this because the way some bundlers defineProperty does not play nice with the solid store
-    const plugin = { ...rawPlugin };
+    const plugin = { ...rawPlugin, scopedUnpatches };
     internalLoaded[pluginId] = plugin;
 
     plugin.onLoad?.();
@@ -92,6 +53,7 @@ export function startPlugin(pluginId: string) {
 
     try {
       internalLoaded[pluginId]?.onUnload?.();
+      internalLoaded[pluginId]?.scopedUnpatches.flat().forEach((e) => e());
     } catch (e2) {
       log(`plugin ${pluginId} errored while unloading: ${e2}`, "error");
     }
@@ -109,6 +71,7 @@ export function stopPlugin(pluginId: string) {
 
   try {
     loadedData.onUnload();
+    loadedData.scopedUnpatches.flat().forEach((e) => e());
   } catch (e) {
     log(`plugin ${pluginId} errored while unloading: ${e}`, "error");
   }
