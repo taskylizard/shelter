@@ -3,7 +3,7 @@
 import { getDispatcher } from "./flux";
 import { awaitDispatch, getFiber, reactFiberWalker } from "./util";
 import { Component } from "solid-js";
-import { SolidInReactBridge } from "shelter-ui";
+import { renderSolidInReact } from "shelter-ui";
 import Settings from "./components/Settings";
 import { after } from "spitroast";
 
@@ -35,7 +35,7 @@ const generatePredicateSections = () =>
         return {
           section: s[1],
           label: s[2],
-          element: () => <SolidInReactBridge comp={s[3]} />,
+          element: () => renderSolidInReact(s[3]),
         };
     }
   });
