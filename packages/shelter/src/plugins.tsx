@@ -19,7 +19,7 @@ export type EvaledPlugin = {
   onLoad?(): void;
   onUnload(): void;
   settings?: Component;
-  scopedUnpatches: ScopedUnpatches;
+  removeScoped: () => void;
 };
 
 const internalData = storage<StoredPlugin>("plugins-internal");
@@ -34,7 +34,8 @@ export function startPlugin(pluginId: string) {
 
   if (internalLoaded[pluginId]) throw new Error("attempted to load an already loaded plugin");
 
-  const [shelterPluginEdition, scopedUnpatches] = createShelterPluginEdition(pluginId, data);
+  const [pluginApi, removeScoped] = createShelterPluginEdition(pluginId, data);
+  const shelterPluginEdition = { ...window["shelter"], plugin: pluginApi };
 
   const pluginString = `shelter=>{return ${data.js}}${atob("Ci8v")}# sourceURL=s://!SHELTER/${pluginId}`;
 
@@ -42,7 +43,7 @@ export function startPlugin(pluginId: string) {
     // noinspection CommaExpressionJS
     const rawPlugin: EvaledPlugin = (0, eval)(pluginString)(shelterPluginEdition);
     // clone this because the way some bundlers defineProperty does not play nice with the solid store
-    const plugin = { ...rawPlugin, scopedUnpatches };
+    const plugin = { ...rawPlugin, removeScoped };
     internalLoaded[pluginId] = plugin;
 
     plugin.onLoad?.();
@@ -53,7 +54,7 @@ export function startPlugin(pluginId: string) {
 
     try {
       internalLoaded[pluginId]?.onUnload?.();
-      internalLoaded[pluginId]?.scopedUnpatches.flat().forEach((e) => e());
+      internalLoaded[pluginId]?.removeScoped();
     } catch (e2) {
       log(`plugin ${pluginId} errored while unloading: ${e2}`, "error");
     }
@@ -71,7 +72,7 @@ export function stopPlugin(pluginId: string) {
 
   try {
     loadedData.onUnload();
-    loadedData.scopedUnpatches.flat().forEach((e) => e());
+    internalLoaded[pluginId]?.removeScoped();
   } catch (e) {
     log(`plugin ${pluginId} errored while unloading: ${e}`, "error");
   }

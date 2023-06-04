@@ -6,9 +6,9 @@ import { observe } from "./observer";
 import { after, before, instead } from "spitroast";
 import { getSettings, StoredPlugin } from "./plugins";
 import { Repetition } from "./tsUtils";
+import { ShelterApi } from "./windowApi";
 
 export type ScopedUnpatches = Repetition<7, (() => void)[]>;
-
 export const pluginStorages = storage("plugins-data");
 
 function createStorage(pluginId: string): [Record<string, any>, () => void] {
@@ -46,38 +46,52 @@ export function createShelterPluginEdition(pluginId: string, data: StoredPlugin)
       return res;
     }) as any; // i give up with types
 
-  /*const shelterPluginEdition =*/
-  return [
-    {
-      ...window["shelter"],
-      plugin: {
-        store,
-        flushStore,
-        manifest: data.manifest,
-        showSettings: () =>
-          openModal((mprops) => (
-            <ModalRoot>
-              <ModalHeader close={mprops.close}>Settings - {data.manifest.name}</ModalHeader>
-              <ModalBody>{getSettings(pluginId)({})}</ModalBody>
-            </ModalRoot>
-          )),
-        scoped: {
-          subscribe(type: string, cb: (payload: any) => void) {
-            getDispatcher().then((d) => {
-              d.subscribe(type, cb);
-              scopedUnpatches[0].push(() => d.unsubscribe(type, cb));
-            });
-            return () => getDispatcher().then((d) => d.unsubscribe(type, cb));
-          },
-          intercept: interceptUnpatch(1, interceptFlux),
-          observeDom: interceptUnpatch(2, observe),
-          before: interceptUnpatch(3, before),
-          after: interceptUnpatch(4, after),
-          instead: interceptUnpatch(5, instead),
-          injectCss: interceptUnpatch(6, injectCss),
-        },
+  const clear = (i: number) => () => {
+    scopedUnpatches[i].forEach((e) => e());
+    scopedUnpatches[i] = [];
+  };
+
+  const pluginApi = {
+    store,
+    flushStore,
+    manifest: data.manifest,
+    showSettings: () =>
+      openModal((mprops) => (
+        <ModalRoot>
+          <ModalHeader close={mprops.close}>Settings - {data.manifest.name}</ModalHeader>
+          <ModalBody>{getSettings(pluginId)({})}</ModalBody>
+        </ModalRoot>
+      )),
+    scoped: {
+      subscribe(type: string, cb: (payload: any) => void) {
+        getDispatcher().then((d) => {
+          d.subscribe(type, cb);
+          scopedUnpatches[0].push(() => d.unsubscribe(type, cb));
+        });
+        return () => getDispatcher().then((d) => d.unsubscribe(type, cb));
+      },
+      intercept: interceptUnpatch(1, interceptFlux),
+      observeDom: interceptUnpatch(2, observe),
+      before: interceptUnpatch(3, before),
+      after: interceptUnpatch(4, after),
+      instead: interceptUnpatch(5, instead),
+      injectCss: interceptUnpatch(6, injectCss),
+      removeSubscribes: clear(0),
+      removeIntercepts: clear(1),
+      removeObservations: clear(2),
+      removeBefores: clear(3),
+      removeAfters: clear(4),
+      removeInsteads: clear(5),
+      removeCss: clear(6),
+      removeAll: () => {
+        scopedUnpatches.flat().forEach((e) => e());
+        scopedUnpatches.forEach((_, i) => (scopedUnpatches[i] = []));
       },
     },
-    scopedUnpatches,
-  ] as const;
+  } as const;
+
+  return [pluginApi, pluginApi.scoped.removeAll] as const;
 }
+
+export type PluginApi = ReturnType<typeof createShelterPluginEdition>[0];
+export type ShelterPluginEdition = ShelterApi & { plugin: PluginApi };
