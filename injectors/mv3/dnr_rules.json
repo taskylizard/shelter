@@ -6,13 +6,21 @@
       "type": "modifyHeaders",
       "responseHeaders": [
         {
-          "header": "content-security-policy",
-          "operation": "remove"
+          "header": "x-is-this-on",
+          "operation": "set",
+          "value": "test"
+        }
+      ],
+      "requestHeaders": [
+        {
+          "header": "set-cookie",
+          "operation": "set",
+          "value": "bignuts=true"
         }
       ]
     },
     "condition": {
-      "regexFilter": "https?://discord.com/.*",
+      "requestDomains": ["discord.com"],
       "resourceTypes": ["main_frame"]
     }
   }
