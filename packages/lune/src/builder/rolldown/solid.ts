@@ -2,6 +2,7 @@ import { transformAsync, type TransformOptions } from "@babel/core";
 import ts from "@babel/preset-typescript";
 import solid from "babel-preset-solid";
 import type { Plugin } from "rolldown";
+import { OutputType, transform } from "../../../../oxc-jsx-dom-expressions";
 
 function getExtension(filename: string): string {
   const index = filename.lastIndexOf(".");
@@ -18,30 +19,29 @@ export const SolidPlugin = (): Plugin => {
       handler: async (source, id) => {
         const currentFileExtension = getExtension(id);
 
-        const solidOptions = { generate: "dom", hydratable: true };
-
         id = id.replace(/\?.+$/, "");
 
-        const babelOptions: TransformOptions = {
-          babelrc: false,
-          configFile: false,
-          root: projectRoot,
-          filename: id,
-          sourceFileName: id,
-          presets: [[solid, { ...solidOptions }]],
-          plugins: [],
-          sourceMaps: true,
-        };
+        const code = transform(source, {
+          generate: OutputType.Dom,
+          hydratable: true,
+          contextToCustomElements: true,
+          wrapConditionals: true,
+          validate: true,
+          builtIns: [
+            "For",
+            "Show",
+            "Switch",
+            "Match",
+            "Suspense",
+            "SuspenseList",
+            "Portal",
+            "Index",
+            "Dynamic",
+            "ErrorBoundary",
+          ],
+        });
 
-        const shouldBeProcessedWithTypescript = currentFileExtension === ".tsx";
-
-        if (shouldBeProcessedWithTypescript) {
-          babelOptions.presets!.push([ts, {}]);
-        }
-
-        const { code, map } = (await transformAsync(source, babelOptions)) ?? {};
-
-        return { code: code ?? "", map };
+        return { code: code ?? "" };
       },
     },
   };

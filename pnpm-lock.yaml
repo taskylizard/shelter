@@ -54,6 +54,9 @@ importers:
       lightningcss:
         specifier: ^1.28.2
         version: 1.28.2
+      oxc-jsx-dom-expressions:
+        specifier: workspace:*
+        version: link:../oxc-jsx-dom-expressions
       resolve:
         specifier: ^1.22.10
         version: 1.22.10
@@ -91,6 +94,12 @@ importers:
       typescript:
         specifier: ^5.6.2
         version: 5.6.2
+
+  packages/oxc-jsx-dom-expressions:
+    devDependencies:
+      '@napi-rs/cli':
+        specifier: ^2.18.4
+        version: 2.18.4
 
   packages/shelter:
     dependencies:
@@ -1115,6 +1124,11 @@ packages:
 
   '@mdn/browser-compat-data@5.5.29':
     resolution: {integrity: sha512-NHdG3QOiAsxh8ygBSKMa/WaNJwpNt87uVqW+S2RlnSqgeRdk+L3foNWTX6qd0I3NHSlCFb47rgopeNCJtRDY5A==}
+
+  '@napi-rs/cli@2.18.4':
+    resolution: {integrity: sha512-SgJeA4df9DE2iAEpr3M2H0OKl/yjtg1BnRI5/JyowS71tUWhrfSu2LT0V3vlHET+g1hBVlrO60PmEXwUEKp8Mg==}
+    engines: {node: '>= 10'}
+    hasBin: true
 
   '@napi-rs/wasm-runtime@0.2.6':
     resolution: {integrity: sha512-z8YVS3XszxFTO73iwvFDNpQIzdMmSDTP/mB3E/ucR37V3Sx57hSExcXyMoNwaucWxnsWf4xfbZv0iZ30jr0M4Q==}
@@ -5196,6 +5210,8 @@ snapshots:
       '@jridgewell/sourcemap-codec': 1.5.0
 
   '@mdn/browser-compat-data@5.5.29': {}
+
+  '@napi-rs/cli@2.18.4': {}
 
   '@napi-rs/wasm-runtime@0.2.6':
     dependencies:
